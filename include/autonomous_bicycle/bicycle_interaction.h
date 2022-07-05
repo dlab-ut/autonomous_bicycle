@@ -12,7 +12,8 @@
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo_plugins/gazebo_ros_utils.h>
-#include <gazebo/math/gzmath.hh>
+//#include <gazebo/math/gzmath.hh>
+#include <ignition/math.hh>
 #include <gazebo/common/Assert.hh>
 #include <gazebo/common/Console.hh>
 #include <gazebo/common/Time.hh>
@@ -60,7 +61,7 @@ namespace gazebo {
         virtual void FiniChild();
 
     private:
-        double angular_velocity, wheel_speed_instr_[2];
+        double angular_velocity, steer_velocity, wheel_speed_instr_[2];
         unsigned int seq_number, restart_position = 0;
         double x_, rot_;
         bool alive_, initial_pose_saved;
@@ -68,9 +69,9 @@ namespace gazebo {
         // Update Rate
         double update_rate_, update_period_;
 
-        std::string topic_velocity;
+        std::string topic_velocity, topic_steering;
 
-        math::Pose original_pose;
+        ignition::math::Pose3d original_pose;
 
         GazeboRosPtr gazebo_ros_;
         event::ConnectionPtr update_connection_;
@@ -85,6 +86,7 @@ namespace gazebo {
 
         // ROS STUFF
         ros::Subscriber cmd_vel_subscriber_;
+        ros::Subscriber steer_vel_subscriber_;
         ros::CallbackQueue queue_;
         common::Time last_update_time_;
         common::Time last_odom_update_;
@@ -94,6 +96,7 @@ namespace gazebo {
         void QueueThread();
         void getWheelVelocities();
         void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &cmd_msg);
+        void steerVelCallback(const std_msgs::Float32::ConstPtr &steer_msg);
     };
 }
 

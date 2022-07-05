@@ -93,10 +93,10 @@
             <wall_time>1489918427 30921483</wall_time>
             <iterations>16325</iterations>
             <model name='bikes_design'>
-                <pose frame=''>0 0 0 0 -0 0</pose>
+                <pose frame=''>0 0 0 0 0 0</pose>
             </model>
             <model name='ground_plane'>
-                <pose frame=''>0 0 0 0 -0 0</pose>
+                <pose frame=''>0 0 0 0 0 0</pose>
                 <scale>1 1 1</scale>
                 <link name='link'>
                     <pose frame=''>0 0 0 0 -0 0</pose>
@@ -113,7 +113,7 @@
         <model name='bikes_design'>
             <static>0</static>
             <allow_auto_disable>1</allow_auto_disable>
-            <pose frame=''>0 0 0 0 -0 0</pose>
+            <pose frame=''>0 0 0 0 0.0 0</pose>
 
             <link name='saddle'>
                 <pose frame=''>0 0.4 0.84 -0.2 -0 3.1415</pose>
@@ -611,7 +611,7 @@
                 </collision>
             </link>
             <link name='wheel_front'>
-                <pose frame=''>0 1.225 0.37 0 -0 0</pose>
+                <pose frame=''>0 1.225 0.37 0 0 0</pose>
                 <inertial>
                     <mass>2</mass>
                     <inertia>
@@ -1504,6 +1504,7 @@
                 <joint_steering>main_frame_link_handle</joint_steering>
 
                 <topic_velocity>/bycycle_interaction/vel_wheel</topic_velocity>
+                <topic_steering>/bycycle_interaction/vel_steering</topic_steering>
             </plugin>
             <plugin name='link_odometry_main_frame' filename='liblink_odometry.so'>
                 <updateRate>300</updateRate>

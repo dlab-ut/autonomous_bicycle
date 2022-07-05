@@ -8,7 +8,7 @@
     <include file="$(find gazebo_ros)/launch/empty_world.launch" >
         <arg name="world_name" value="$(find autonomous_bicycle)/worlds/standard_bicycle.world"/>
         <arg name="paused" value="false"/>
-        <arg name="use_sim_time" value="false"/>
+        <arg name="use_sim_time" value="true"/>
         <arg name="gui" value="true"/>
         <arg name="headless" value="false"/>
         <arg name="debug" value="false"/>
@@ -63,7 +63,7 @@
     <arg name="frequency" default="5" />
     <node name="static_tf_pub_world_to_gazebo_world" pkg="tf" type="static_transform_publisher" args="0 0 0  0 0 0 1 world gazebo_world 200" />
 
-    <node name="gazebo2rviz" pkg="autonomous_bicycle" type="gazebo2rviz.py"  output="screen">
+    <node name="gazebo2rviz" pkg="autonomous_bicycle" type="gazebo2rviz.py">
         <param name="ignore_submodels_of" value="" type="str" />
         <param name="rate" value="300" />
     </node>

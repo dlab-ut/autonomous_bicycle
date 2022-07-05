@@ -31,7 +31,7 @@ namespace gazebo {
         // Initialize update rate stuff
         if (this->update_rate_ > 0.0) this->update_period_ = 1.0 / this->update_rate_;
         else this->update_period_ = 0.0;
-        last_update_time_ = parent->GetWorld()->GetSimTime();
+        last_update_time_ = parent->GetWorld()->SimTime();
 
         alive_ = true;
 
@@ -49,24 +49,24 @@ namespace gazebo {
     }
 
     void LinkOdometry::Reset() {
-        last_update_time_ = parent->GetWorld()->GetSimTime();
+        last_update_time_ = parent->GetWorld()->SimTime();
     }
 
     void LinkOdometry::UpdateChild() {
-        common::Time current_time = parent->GetWorld()->GetSimTime();
+        common::Time current_time = parent->GetWorld()->SimTime();
 
         double seconds_since_last_update = (current_time - last_update_time_).Double();
 
         if (seconds_since_last_update > update_period_) {
-            math::Pose pose = link_ref->GetWorldPose();
-            tf::Quaternion qt(pose.rot.x, pose.rot.y, pose.rot.z, pose.rot.w);
+            ignition::math::Pose3d pose = link_ref->WorldPose();
+            tf::Quaternion qt(pose.Rot().X(), pose.Rot().Y(), pose.Rot().Z(), pose.Rot().W());
 
             // Rotate quaternion
             tf::Vector3 rot_angle(0, 0, 1);
             qt.setRotation(rot_angle, offset_rotation_yaw);
 
             // Fix Z value = 0.
-            tf::Vector3 vt (pose.pos.x, pose.pos.y, 0.0 /*pose.pos.z*/);
+            tf::Vector3 vt (pose.Pos().X(), pose.Pos().Y(), 0.0 /*pose.pos.z*/);
 
             temp_x = vt.x();
             temp_y = vt.y();

@@ -1,0 +1,4 @@
+/imu_steering/pitch ハンドル角[degree]
+/imu_lean/pitch 車体roll角[degree]
+/bicycle/odom_main_frame [odom]
+/bicycle/odom_rear_wheel

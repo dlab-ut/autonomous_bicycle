@@ -18,10 +18,13 @@ degrees2rad = math.pi / 180.0
 class BicycleInteraction:
     def __init__(self):
         self.pub_vel_wheel = rospy.Publisher('/bycycle_interaction/vel_wheel', Twist, queue_size=1)
+        self.pub_vel_steering = rospy.Publisher('/bycycle_interaction/vel_steering', Float32, queue_size=1)
 
         self.twist = Twist()
         self.vel_wheel = 0
         self.angle_wheel = 0
+        self.steering = Float32()
+        self.vel_steering = 0
         self.enable_bicycle = True
 
         self.rate = rospy.get_param('~rate', 3.0)
@@ -39,11 +42,12 @@ class BicycleInteraction:
         rate = rospy.Rate(self.rate)
 
         while not rospy.is_shutdown():
-            self.publish_vel_wheel()
+            self.publish()
             rate.sleep()
 
     def reconfig_callback(self, config, level):
         self.vel_wheel = config['vel_wheel']
+        self.vel_steering = config['vel_steering']
         return config
 
     def process_imu_message_angle(self, imuMsg):
@@ -65,14 +69,16 @@ class BicycleInteraction:
         else:
             self.enable_bicycle = True
 
-    def publish_vel_wheel(self):
+    def publish(self):
         # send angular velocity to wheels.
         linear_vel = 0
         angular_vel = 0
+        steer_vel = 0
 
         if self.enable_bicycle or self.vel_wheel == -1:
             linear_vel = self.vel_wheel / self.wheel_radius
             angular_vel = self.angle_wheel * degrees2rad
+            steer_vel = self.vel_steering
 
         self.twist.linear.x = linear_vel
         self.twist.linear.y = 0
@@ -81,7 +87,10 @@ class BicycleInteraction:
         self.twist.angular.y = 0
         self.twist.angular.z = angular_vel
 
+        self.steering.data = steer_vel
+
         self.pub_vel_wheel.publish(self.twist)
+        self.pub_vel_steering.publish(self.steering)
 
 # Main function.
 if __name__ == '__main__':

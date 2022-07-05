@@ -17,6 +17,7 @@ namespace gazebo {
         gazebo_ros_->isInitialized();
 
         gazebo_ros_->getParameter<std::string>(topic_velocity, "topic_velocity", "cmd_vel");
+        gazebo_ros_->getParameter<std::string>(topic_steering, "topic_steering", "steer_vel");
         gazebo_ros_->getParameter<double>(update_rate_, "updateRate", 100.0);
 
         controller_steering_angle = PID();
@@ -27,6 +28,7 @@ namespace gazebo {
         controller_steering_angle.setWindUp(0);
 
         angular_velocity = 0;
+        steer_velocity = 0;
 
         joint_front_wheel = gazebo_ros_->getJoint(parent, "joint_front_wheel", "_joint_front_wheel");
         joint_rear_wheel = gazebo_ros_->getJoint(parent, "joint_rear_wheel", "_joint_rear_wheel");
@@ -57,7 +59,7 @@ namespace gazebo {
         // Initialize update rate stuff
         if (this->update_rate_ > 0.0) this->update_period_ = 1.0 / this->update_rate_;
         else this->update_period_ = 0.0;
-        last_update_time_ = parent->GetWorld()->GetSimTime();
+        last_update_time_ = parent->GetWorld()->SimTime();
 
         x_ = 0;
         rot_ = 0;
@@ -75,6 +77,12 @@ namespace gazebo {
                                                                                 this, _1),
                                                                     ros::VoidPtr(), &queue_);
         cmd_vel_subscriber_ = gazebo_ros_->node()->subscribe(so);
+        ros::SubscribeOptions so_ =
+                ros::SubscribeOptions::create<std_msgs::Float32>(topic_steering, 1,
+                                                                    boost::bind(&BicycleInteraction::steerVelCallback,
+                                                                                this, _1),
+                                                                    ros::VoidPtr(), &queue_);
+        steer_vel_subscriber_ = gazebo_ros_->node()->subscribe(so_);
         ROS_INFO("%s: Subscribe to %s!", gazebo_ros_->info(), topic_velocity.c_str());
 
         // start custom queue for bicycle interaction
@@ -91,17 +99,17 @@ namespace gazebo {
     }
 
     void BicycleInteraction::Reset() {
-        last_update_time_ = parent->GetWorld()->GetSimTime();
+        last_update_time_ = parent->GetWorld()->SimTime();
         x_ = 0;
         rot_ = 0;
     }
 
     void BicycleInteraction::UpdateChild() {
-        common::Time current_time = parent->GetWorld()->GetSimTime();
+        common::Time current_time = parent->GetWorld()->SimTime();
         double seconds_since_last_update = (current_time - last_update_time_).Double();
 
         if(!initial_pose_saved){
-            this->original_pose = this->parent->GetWorldPose();
+            this->original_pose = this->parent->WorldPose();
             initial_pose_saved = true;
         }
 
@@ -132,12 +140,13 @@ namespace gazebo {
                 // only rear traction
                 //joint_front_wheel->SetVelocity(0, -angular_velocity);
                 joint_rear_wheel->SetVelocity(0, -angular_velocity);
-                joint_steering->SetVelocity(0, 0);
+                joint_steering->SetVelocity(0, steer_velocity);
 
-                math::Angle angle_steering = joint_steering->GetAngle(0);
+                /*ignition::math::Angle angle_steering = joint_steering->Position(0);
                 controller_steering_angle.setPoint = 0;
                 controller_steering_angle.update(angle_steering.Degree());
                 joint_steering->SetForce(0, controller_steering_angle.output);
+                */
             }
 
             last_update_time_ += common::Time(update_period_);
@@ -166,6 +175,12 @@ namespace gazebo {
         boost::mutex::scoped_lock scoped_lock(lock);
         x_ = cmd_msg->linear.x;
         rot_ = cmd_msg->angular.z;
+    }
+
+    void BicycleInteraction::steerVelCallback(const std_msgs::Float32::ConstPtr &steer_msg)
+    {
+        boost::mutex::scoped_lock scoped_lock(lock);
+        steer_velocity = steer_msg->data;
     }
 
     void BicycleInteraction::QueueThread() {
