@@ -16,25 +16,18 @@ namespace gazebo {
         // Make sure the ROS node for Gazebo has already been initialized
         gazebo_ros_->isInitialized();
 
-        gazebo_ros_->getParameter<std::string>(topic_velocity, "topic_velocity", "cmd_vel");
+        gazebo_ros_->getParameter<std::string>(topic_wheel, "topic_wheel", "wheel_torque");
         gazebo_ros_->getParameter<std::string>(topic_steering, "topic_steering", "steer_vel");
         gazebo_ros_->getParameter<double>(update_rate_, "updateRate", 100.0);
+        gazebo_ros_->getParameter<double>(limit_torque, "limitTorque", 5.0);
 
-        controller_steering_angle = PID();
-        controller_steering_angle.setSampleTime(0.0001);
-        controller_steering_angle.setKp(10);
-        controller_steering_angle.setKd(0);
-        controller_steering_angle.setKi(0);
-        controller_steering_angle.setWindUp(0);
-
-        angular_velocity = 0;
+        wheel_torque = -1;
         steer_velocity = 0;
 
         joint_front_wheel = gazebo_ros_->getJoint(parent, "joint_front_wheel", "_joint_front_wheel");
         joint_rear_wheel = gazebo_ros_->getJoint(parent, "joint_rear_wheel", "_joint_rear_wheel");
         joint_steering = gazebo_ros_->getJoint(parent, "joint_steering", "_joint_steering");
 
-        int limit_torque = 5;
         joint_front_wheel->SetParam("fmax", 0, limit_torque);
         joint_rear_wheel->SetParam("fmax", 0, limit_torque);
         joint_steering->SetParam("fmax", 0, limit_torque);
@@ -61,29 +54,22 @@ namespace gazebo {
         else this->update_period_ = 0.0;
         last_update_time_ = parent->GetWorld()->SimTime();
 
-        x_ = 0;
-        rot_ = 0;
-
         restart_position = 0;
 
         alive_ = true;
 
-        // ROS: Subscribe to the velocity command topic (usually "cmd_vel")
-        ROS_INFO("%s: Try to subscribe to %s!", gazebo_ros_->info(), topic_velocity.c_str());
-
         ros::SubscribeOptions so =
-                ros::SubscribeOptions::create<geometry_msgs::Twist>(topic_velocity, 1,
-                                                                    boost::bind(&BicycleInteraction::cmdVelCallback,
+                ros::SubscribeOptions::create<std_msgs::Float32>(topic_wheel, 1,
+                                                                    boost::bind(&BicycleInteraction::wheelForceCallback,
                                                                                 this, _1),
                                                                     ros::VoidPtr(), &queue_);
-        cmd_vel_subscriber_ = gazebo_ros_->node()->subscribe(so);
+        wheel_force_subscriber_ = gazebo_ros_->node()->subscribe(so);
         ros::SubscribeOptions so_ =
                 ros::SubscribeOptions::create<std_msgs::Float32>(topic_steering, 1,
                                                                     boost::bind(&BicycleInteraction::steerVelCallback,
                                                                                 this, _1),
                                                                     ros::VoidPtr(), &queue_);
         steer_vel_subscriber_ = gazebo_ros_->node()->subscribe(so_);
-        ROS_INFO("%s: Subscribe to %s!", gazebo_ros_->info(), topic_velocity.c_str());
 
         // start custom queue for bicycle interaction
         this->callback_queue_thread_ =
@@ -98,13 +84,13 @@ namespace gazebo {
 
     }
 
-    void BicycleInteraction::Reset() {
+    void BicycleInteraction::Reset()
+    {
         last_update_time_ = parent->GetWorld()->SimTime();
-        x_ = 0;
-        rot_ = 0;
     }
 
-    void BicycleInteraction::UpdateChild() {
+    void BicycleInteraction::UpdateChild()
+    {
         common::Time current_time = parent->GetWorld()->SimTime();
         double seconds_since_last_update = (current_time - last_update_time_).Double();
 
@@ -114,51 +100,40 @@ namespace gazebo {
         }
 
         if (seconds_since_last_update > update_period_) {
-            getWheelVelocities();
 
             // if velocity < 0 reset model pose
-            if(angular_velocity < 0){
-                joint_front_wheel->SetVelocity(0, 0);
-                joint_rear_wheel->SetVelocity(0, 0);
-                joint_steering->SetVelocity(0, 0);
+            if(!init_simulation){
+                if(wheel_torque < 0){
+                    init_simulation = true;
+                    joint_front_wheel->SetVelocity(0, 0);
+                    joint_rear_wheel->SetVelocity(0, 0);
+                    joint_steering->SetVelocity(0, 0);
 
-                joint_front_wheel->SetPosition(0, 0);
-                joint_rear_wheel->SetPosition(0, 0);
-                joint_steering->SetPosition(0, 0);
+                    joint_front_wheel->SetPosition(0, 0);
+                    joint_rear_wheel->SetPosition(0, 0);
+                    joint_steering->SetPosition(0, 0);
 
-                //this->original_pose.rot.y = 0.5;
-                this->parent->SetWorldPose(this->original_pose);
+                    //this->original_pose.rot.y = 0.5;
+                    this->parent->SetWorldPose(this->original_pose);
+                }
             }else{
-                //joint_base->SetForce(0, control_output);
-                // Temporal: unable controller
-                controller_steering_angle.setKp(0);
-                controller_steering_angle.setKd(0);
-                controller_steering_angle.setKi(0);
-                controller_steering_angle.setWindUp(0);
-                controller_steering_angle.clear();
-
-                // only rear traction
-                //joint_front_wheel->SetVelocity(0, -angular_velocity);
-                joint_rear_wheel->SetVelocity(0, -angular_velocity);
+                joint_rear_wheel->SetForce(0, -wheel_torque);
+                //joint_rear_wheel->SetVelocity(0, -30);
                 joint_steering->SetVelocity(0, steer_velocity);
-
-                /*ignition::math::Angle angle_steering = joint_steering->Position(0);
-                controller_steering_angle.setPoint = 0;
-                controller_steering_angle.update(angle_steering.Degree());
-                joint_steering->SetForce(0, controller_steering_angle.output);
-                */
             }
 
             last_update_time_ += common::Time(update_period_);
         }
     }
 
-    void BicycleInteraction::resetWorldEvent() {
+    void BicycleInteraction::resetWorldEvent()
+    {
         ROS_INFO("BicycleInteraction::resetWorldEvent()");
     }
 
     // Finalize the controller
-    void BicycleInteraction::FiniChild() {
+    void BicycleInteraction::FiniChild()
+    {
         alive_ = false;
         queue_.clear();
         queue_.disable();
@@ -166,15 +141,10 @@ namespace gazebo {
         callback_queue_thread_.join();
     }
 
-    void BicycleInteraction::getWheelVelocities() {
+    void BicycleInteraction::wheelForceCallback(const std_msgs::Float32::ConstPtr &wheel_msg)
+    {
         boost::mutex::scoped_lock scoped_lock(lock);
-        angular_velocity = x_;
-    }
-
-    void BicycleInteraction::cmdVelCallback(const geometry_msgs::Twist::ConstPtr &cmd_msg) {
-        boost::mutex::scoped_lock scoped_lock(lock);
-        x_ = cmd_msg->linear.x;
-        rot_ = cmd_msg->angular.z;
+        wheel_torque = wheel_msg->data;
     }
 
     void BicycleInteraction::steerVelCallback(const std_msgs::Float32::ConstPtr &steer_msg)
@@ -183,7 +153,8 @@ namespace gazebo {
         steer_velocity = steer_msg->data;
     }
 
-    void BicycleInteraction::QueueThread() {
+    void BicycleInteraction::QueueThread()
+    {
         static const double timeout = 0.01;
 
         while (alive_ && gazebo_ros_->node()->ok()) {
@@ -196,4 +167,3 @@ namespace gazebo {
 
     GZ_REGISTER_MODEL_PLUGIN (BicycleInteraction)
 }
-

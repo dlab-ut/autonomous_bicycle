@@ -1503,8 +1503,9 @@
                 <joint_rear_wheel>main_frame_wheel_rear</joint_rear_wheel>
                 <joint_steering>main_frame_link_handle</joint_steering>
 
-                <topic_velocity>/bycycle_interaction/vel_wheel</topic_velocity>
+                <topic_wheel>/bycycle_interaction/torque_wheel</topic_wheel>
                 <topic_steering>/bycycle_interaction/vel_steering</topic_steering>
+                <limitTorque>5</limitTorque>
             </plugin>
             <plugin name='link_odometry_main_frame' filename='liblink_odometry.so'>
                 <updateRate>300</updateRate>

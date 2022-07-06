@@ -18,7 +18,7 @@
     </include>
 
     <!-- interaction with simulated bicycle -->
-    <node pkg="autonomous_bicycle" type="bicycle_interaction.py" name="bicycle_interaction" required="false" >
+    <node pkg="autonomous_bicycle" type="bicycle_interaction.py" name="bicycle_interaction" required="false" output="screen">
         <param name="rate" type="int" value="100" />
         <param name="wheel_radius" type="double" value="0.335" />
         <param name="angle_limit" type="double" value="70" />

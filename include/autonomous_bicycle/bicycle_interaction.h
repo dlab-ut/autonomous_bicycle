@@ -61,15 +61,18 @@ namespace gazebo {
         virtual void FiniChild();
 
     private:
-        double angular_velocity, steer_velocity, wheel_speed_instr_[2];
+        double wheel_torque, steer_velocity, wheel_speed_instr_[2];
         unsigned int seq_number, restart_position = 0;
-        double x_, rot_;
         bool alive_, initial_pose_saved;
+        bool init_simulation;
 
         // Update Rate
         double update_rate_, update_period_;
 
-        std::string topic_velocity, topic_steering;
+        std::string topic_wheel, topic_steering;
+
+        //limit torque
+        double limit_torque = 5;
 
         ignition::math::Pose3d original_pose;
 
@@ -85,7 +88,7 @@ namespace gazebo {
         boost::mutex lock;
 
         // ROS STUFF
-        ros::Subscriber cmd_vel_subscriber_;
+        ros::Subscriber wheel_force_subscriber_;
         ros::Subscriber steer_vel_subscriber_;
         ros::CallbackQueue queue_;
         common::Time last_update_time_;
@@ -94,8 +97,7 @@ namespace gazebo {
         PID controller_steering_angle;
 
         void QueueThread();
-        void getWheelVelocities();
-        void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &cmd_msg);
+        void wheelForceCallback(const std_msgs::Float32::ConstPtr &wheel_msg);
         void steerVelCallback(const std_msgs::Float32::ConstPtr &steer_msg);
     };
 }

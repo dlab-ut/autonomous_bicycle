@@ -17,13 +17,12 @@ degrees2rad = math.pi / 180.0
 
 class BicycleInteraction:
     def __init__(self):
-        self.pub_vel_wheel = rospy.Publisher('/bycycle_interaction/vel_wheel', Twist, queue_size=1)
+        self.pub_torque_wheel = rospy.Publisher('/bycycle_interaction/torque_wheel', Float32, queue_size=1)
         self.pub_vel_steering = rospy.Publisher('/bycycle_interaction/vel_steering', Float32, queue_size=1)
 
-        self.twist = Twist()
-        self.vel_wheel = 0
-        self.angle_wheel = 0
-        self.steering = Float32()
+        self.wheelTorque = Float32()
+        self.steeringVelocity = Float32()
+        self.torque_wheel = 0
         self.vel_steering = 0
         self.enable_bicycle = True
 
@@ -42,11 +41,12 @@ class BicycleInteraction:
         rate = rospy.Rate(self.rate)
 
         while not rospy.is_shutdown():
+            print(11111)
             self.publish()
             rate.sleep()
 
     def reconfig_callback(self, config, level):
-        self.vel_wheel = config['vel_wheel']
+        self.torque_wheel = config['torque_wheel']
         self.vel_steering = config['vel_steering']
         return config
 
@@ -71,32 +71,21 @@ class BicycleInteraction:
 
     def publish(self):
         # send angular velocity to wheels.
-        linear_vel = 0
-        angular_vel = 0
-        steer_vel = 0
 
-        if self.enable_bicycle or self.vel_wheel == -1:
-            linear_vel = self.vel_wheel / self.wheel_radius
-            angular_vel = self.angle_wheel * degrees2rad
-            steer_vel = self.vel_steering
+        if self.enable_bicycle or self.torque_wheel == -1:
+            self.wheelTorque = self.torque_wheel
+        else:
+            self.wheelTorque = 0
 
-        self.twist.linear.x = linear_vel
-        self.twist.linear.y = 0
-        self.twist.linear.z = 0
-        self.twist.angular.x = 0
-        self.twist.angular.y = 0
-        self.twist.angular.z = angular_vel
+        self.steeringVelocity = self.vel_steering
 
-        self.steering.data = steer_vel
-
-        self.pub_vel_wheel.publish(self.twist)
-        self.pub_vel_steering.publish(self.steering)
+        self.pub_torque_wheel.publish(self.wheelTorque)
+        self.pub_vel_steering.publish(self.steeringVelocity)
 
 # Main function.
 if __name__ == '__main__':
     # Initialize the node and name it.
     rospy.init_node('bicycle_interaction_helper')
-
     try:
         obj = BicycleInteraction()
     except:
